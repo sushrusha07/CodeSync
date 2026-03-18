@@ -1,15 +1,13 @@
 const ACTIONS = {
-  JOIN: "join",
-  JOINED: "joined",
-  DISCONNECTED: "disconnected",
-  CODE_CHANGE: "code-change",
-  SYNC_CODE: "sync-code",
-
-  SEND_MESSAGE: "send-message",
-  RECEIVE_MESSAGE: "receive-message",
-
-  CURSOR_POSITION: "cursor-position",
-  CURSOR_UPDATE: "cursor-update",
+  JOIN: "JOIN",
+  JOINED: "JOINED",
+  DISCONNECTED: "DISCONNECTED",
+  CODE_CHANGE: "CODE_CHANGE",
+  SYNC_CODE: "SYNC_CODE",
+  SEND_MESSAGE: "SEND_MESSAGE",
+  RECEIVE_MESSAGE: "RECEIVE_MESSAGE",
+  CURSOR_POSITION: "CURSOR_POSITION",
+  CURSOR_UPDATE: "CURSOR_UPDATE",
 };
 
-export default ACTIONS;
+module.exports = ACTIONS;

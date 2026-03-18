@@ -1,9 +1,7 @@
 import { io } from "socket.io-client";
 
 export const initSocket = async () => {
-  return io({
-    transports: ["websocket", "polling"],
-    reconnectionAttempts: 5,
-    timeout: 10000,
+  return io("http://localhost:5000", {
+    transports: ["websocket"],
   });
 };

@@ -33,58 +33,84 @@ const EditorPage = () => {
   const fileInputRef = useRef(null);
   const editorInstanceRef = useRef(null);
 
+  // ✅ persistent username
+  const username =
+    location.state?.username || localStorage.getItem("username");
+
   useEffect(() => {
     const init = async () => {
       socketRef.current = await initSocket();
 
-      const handleErrors = (e) => {
-        console.log("socket error", e);
-        toast.error("Socket connection failed.");
-        reactNavigator("/");
-      };
+      socketRef.current.on("connect", () => {
+        console.log("CONNECTED:", socketRef.current.id);
+      });
 
-      socketRef.current.on("connect_error", handleErrors);
-      socketRef.current.on("connect_failed", handleErrors);
+      socketRef.current.on("connect_error", (err) => {
+        console.log("Socket error:", err);
+      });
 
+      // ✅ save username
+      if (username) {
+        localStorage.setItem("username", username);
+      }
+
+      // ✅ JOIN room
       socketRef.current.emit(ACTIONS.JOIN, {
         roomId,
-        username: location.state?.username,
+        username,
       });
 
-      socketRef.current.on(ACTIONS.JOINED, ({ clients, username, socketId }) => {
-        if (username !== location.state?.username) {
-          toast.success(`${username} joined the room.`);
+      socketRef.current.on(
+        ACTIONS.JOINED,
+        ({ clients, username: joinedUser, socketId }) => {
+          if (joinedUser !== username) {
+            toast.success(`${joinedUser} joined the room.`);
+          }
+
+          setClients(clients);
+
+          socketRef.current.emit(ACTIONS.SYNC_CODE, {
+            socketId,
+            code: codeRef.current,
+          });
         }
+      );
 
-        setClients(clients);
+      socketRef.current.on(
+        ACTIONS.DISCONNECTED,
+        ({ socketId, username: leftUser }) => {
+          toast.success(`${leftUser} left the room.`);
+          setClients((prev) =>
+            prev.filter((client) => client.socketId !== socketId)
+          );
+        }
+      );
 
-        socketRef.current.emit(ACTIONS.SYNC_CODE, {
-          code: codeRef.current,
-          socketId,
-        });
+      socketRef.current.on(ACTIONS.CODE_CHANGE, ({ code }) => {
+        if (code !== null) {
+          codeRef.current = code;
+        }
       });
 
-      socketRef.current.on(ACTIONS.DISCONNECTED, ({ socketId, username }) => {
-        toast.success(`${username} left the room.`);
-        setClients((prev) =>
-          prev.filter((client) => client.socketId !== socketId)
-        );
-      });
-
-      socketRef.current.on(ACTIONS.RECEIVE_MESSAGE, ({ username, message }) => {
-        setMessages((prev) => [...prev, { username, message }]);
-      });
+      socketRef.current.on(
+        ACTIONS.RECEIVE_MESSAGE,
+        ({ username, message }) => {
+          setMessages((prev) => [...prev, { username, message }]);
+        }
+      );
     };
 
     init();
 
     return () => {
-      socketRef.current.disconnect();
-      socketRef.current.off(ACTIONS.JOINED);
-      socketRef.current.off(ACTIONS.DISCONNECTED);
-      socketRef.current.off(ACTIONS.RECEIVE_MESSAGE);
+      socketRef.current?.disconnect();
     };
-  }, []);
+  }, [roomId, username]);
+
+  // ✅ AFTER hooks (fixes ESLint error)
+  if (!username) {
+    return <Navigate to="/" />;
+  }
 
   async function copyRoomId() {
     try {
@@ -97,10 +123,6 @@ const EditorPage = () => {
 
   function leaveRoom() {
     reactNavigator("/");
-  }
-
-  if (!location.state) {
-    return <Navigate to="/" />;
   }
 
   function handleFileUpload(event) {
@@ -156,7 +178,7 @@ const EditorPage = () => {
     socketRef.current.emit(ACTIONS.SEND_MESSAGE, {
       roomId,
       message: chatInput,
-      username: location.state.username,
+      username,
     });
 
     setChatInput("");
@@ -249,36 +271,6 @@ const EditorPage = () => {
             onReplace={handleReplaceCode}
           />
         )}
-
-        <label>
-          Select Language:
-          <select
-            value={lang}
-            onChange={(e) => {
-              setLang(e.target.value);
-              window.location.reload();
-            }}
-            className="seLang"
-          >
-            <option value="clike">C / C++ / Java</option>
-            <option value="javascript">JavaScript</option>
-            <option value="python">Python</option>
-          </select>
-        </label>
-
-        <label>
-          Select Theme:
-          <select
-            value={them}
-            onChange={(e) => setThem(e.target.value)}
-            className="seLang"
-          >
-            <option value="default">default</option>
-            <option value="material">material</option>
-            <option value="monokai">monokai</option>
-            <option value="dracula">dracula</option>
-          </select>
-        </label>
 
         <button className="btn copyBtn" onClick={copyRoomId}>
           Copy ROOM ID
